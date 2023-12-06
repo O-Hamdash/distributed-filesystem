@@ -32,7 +32,6 @@ class FileSystemObject:
     id_lock = RLock()
 
     def __init__(self, name, type, id=None):
-        print("init", name)
         self.id = id
         if self.id == None:
             with FileSystemObject.id_lock:
@@ -70,27 +69,92 @@ class FileSystemObject:
         instance.contents = [cls.from_dict(obj_data) for obj_data in data["contents"]]
         return instance
 
+# Returns path of the file if found, otherwise returns None
+def search_file(file_system: FileSystemObject, file_name, current_path="", start_path="/"):
+    if (start_path != "/") & (len(current_path) == 0):
+        path_dirs = start_path.split('/')
+
+        curr_fs_dir = file_system
+        for dir in path_dirs:
+            for fs_dir in curr_fs_dir.contents:
+                if fs_dir.name == dir:
+                    current_path = f"{current_path}/{dir}"
+                    curr_fs_dir = fs_dir
+                    break
+        
+        file_system = curr_fs_dir
+
+    for item in file_system.contents:
+        if item.type == "file" and item.name == file_name:
+            return f"{current_path}/{file_name}"
+        elif item.type == "folder":
+            path = search_file(item, file_name, f"{current_path}/{item.name}")
+            if path:
+                return path
+    return None
+
+def search_local_file(file_system: FileSystemObject, file_name, current_path="", local_path="/"):
+    if (local_path != "/") & (len(current_path) == 0):
+        path_dirs = local_path.split('/')
+
+        curr_fs_dir = file_system
+        for dir in path_dirs:
+            for fs_dir in curr_fs_dir.contents:
+                if fs_dir.name == dir:
+                    current_path = f"{current_path}/{dir}"
+                    curr_fs_dir = fs_dir
+                    break
+        
+        file_system = curr_fs_dir
+    
+    for item in file_system.contents:
+        if item.type == "file" and item.name == file_name:
+            return f"{current_path}/{file_name}"
+    return None
+
+def add(filesystem: FileSystemObject, path: str, type: str):
+    path_dirs = path.split('/')
+
+    to_add = path_dirs.pop()
+
+    curr_fs_dir = filesystem
+    for dir in path_dirs:
+        for fs_dir in curr_fs_dir.contents:
+            if fs_dir.name == dir:
+                curr_fs_dir = fs_dir
+                break
+    
+    
+    for i in curr_fs_dir.contents:
+        if (i.name == to_add) & (i.type == type):
+            print(f"{type} with name {to_add} already exists in this location")
+            return
+
+    curr_fs_dir.contents.append(FileSystemObject(name=to_add, type=type))
+        
 
 if __name__ == "__main__":
-    file_system_root = FileSystemObject(name="root", type="folder")
-    file_system_root.contents.append(FileSystemObject(name="file1.txt", type="file"))
-    file_system_root.contents.append(FileSystemObject(name="folder1", type="folder"))
-    file_system_root.contents[1].contents.append(FileSystemObject(name="file2.txt", type="file"))
+    try:
+        # Load and deserialize from the file
+        with open(fs_backup_file, "r") as file:
+            loaded_data = json.load(file)
+            file_system_root = FileSystemObject.from_dict(loaded_data)
+    except FileNotFoundError:
+        file_system_root = FileSystemObject(name="/", type="folder")
+        file_system_root.contents.append(FileSystemObject(name="folder1", type="folder"))
+        file_system_root.contents[0].contents.append(FileSystemObject(name="folder2", type="folder"))
+        file_system_root.contents[0].contents.append(FileSystemObject(name="folder3", type="folder"))
 
+        file_system_root.editable = False
 
-    file_system_root.editable = False
+    add(file_system_root, "/folder1/folder3/file1.txt", "file")
+    add(file_system_root, "/folder1/folder2/file1.txt", "file")
+    add(file_system_root, "/file1.txt", "file")
 
     # Serialize and save to a file
     with open(fs_backup_file, "w") as file:
         serialized_data = file_system_root.to_dict()
         json.dump(serialized_data, file)
 
-    # Load and deserialize from the file
-    with open(fs_backup_file, "r") as file:
-        loaded_data = json.load(file)
-        loaded_file_system = FileSystemObject.from_dict(loaded_data)
-
-
-    print(loaded_file_system)
-    for i in loaded_file_system.contents:
-        print(i)
+    print(search_file(file_system_root, "file1.txt", start_path="/"))
+    print(search_local_file(file_system_root, "file1.txt", local_path="/"))
