@@ -115,15 +115,22 @@ def search_local_file(file_system: FileSystemObject, file_name, current_path="",
 def add(filesystem: FileSystemObject, path: str, type: str):
     path_dirs = path.split('/')
 
+    path_dirs.pop(0)
+
     to_add = path_dirs.pop()
 
     curr_fs_dir = filesystem
     for dir in path_dirs:
+        found = False
         for fs_dir in curr_fs_dir.contents:
             if fs_dir.name == dir:
                 curr_fs_dir = fs_dir
+                found = True
                 break
-    
+
+        if (found == False) & (len(path_dirs) > 0):
+            print("The path provided does not exist")
+            return
     
     for i in curr_fs_dir.contents:
         if (i.name == to_add) & (i.type == type):
@@ -132,6 +139,28 @@ def add(filesystem: FileSystemObject, path: str, type: str):
 
     curr_fs_dir.contents.append(FileSystemObject(name=to_add, type=type))
         
+def delete(filesystem: FileSystemObject, path: str):
+    path_dirs = path.split('/')
+
+    to_del = path_dirs.pop()
+
+    curr_fs_dir = filesystem
+    for dir in path_dirs:
+        for fs_dir in curr_fs_dir.contents:
+            if fs_dir.name == dir:
+                curr_fs_dir = fs_dir
+                break
+
+    success = False
+    i = -1
+    for item in curr_fs_dir.contents:
+        i += 1
+        if item.name == to_del:
+            curr_fs_dir.contents.pop(i)
+            success = True
+
+    if not success:
+        print(f"no such item: {path}")
 
 if __name__ == "__main__":
     try:
@@ -147,14 +176,19 @@ if __name__ == "__main__":
 
         file_system_root.editable = False
 
+    add(file_system_root, "/folder1", "folder")
+    add(file_system_root, "/folder1/folder2", "folder")
+    add(file_system_root, "/folder1/folder3", "folder")
+
     add(file_system_root, "/folder1/folder3/file1.txt", "file")
     add(file_system_root, "/folder1/folder2/file1.txt", "file")
     add(file_system_root, "/file1.txt", "file")
+
+    delete(file_system_root, "/")
+    add(file_system_root, "/folder1", "folder")
+
 
     # Serialize and save to a file
     with open(fs_backup_file, "w") as file:
         serialized_data = file_system_root.to_dict()
         json.dump(serialized_data, file)
-
-    print(search_file(file_system_root, "file1.txt", start_path="/"))
-    print(search_local_file(file_system_root, "file1.txt", local_path="/"))
