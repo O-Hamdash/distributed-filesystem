@@ -10,7 +10,7 @@ import netifaces
 
 master_ip = "192.168.56.10"
 
-def get_ip_address(ifname):
+def get_ip_address(ifname='enp0s8'):
     try:
         addresses = netifaces.ifaddresses(ifname)
         ip_address = addresses[netifaces.AF_INET][0]['addr']
@@ -48,7 +48,7 @@ def test():
     for request in range(10):
         print("Sending request %s …" % request)
 
-        ip_addresses = get_ip_address('enp0s8')
+        ip_addresses = get_ip_address()
         if ip_addresses is not None:
             message = f"Hello from {ip_addresses}"
             try:
@@ -90,6 +90,10 @@ if __name__ == "__main__":
     request_handler_process = multiprocessing.Process(target=request_handler)
     processes.append(request_handler_process)
     request_handler_process.start()
+
+    test_process = multiprocessing.Process(target=test)
+    processes.append(test_process)
+    test_process.start()
 
     for p in processes:
         p.join()
