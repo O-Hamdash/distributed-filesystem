@@ -1,11 +1,11 @@
 import multiprocessing
 import time
 import zmq
+from threading import Thread
 
 master_ip = "192.168.56.10"
 
 storage_ips = set()
-
 
 def listen_for_ips():
     context = zmq.Context()
@@ -52,15 +52,15 @@ def test():
 if __name__ == "__main__":
     processes = []
 
-    ip_process = multiprocessing.Process(target=listen_for_ips)
+    ip_process = Thread(target=listen_for_ips)
     processes.append(ip_process)
     ip_process.start()
 
-    test_receiver = multiprocessing.Process(target=test)
+    test_receiver = Thread(target=test)
     processes.append(test_receiver)
     test_receiver.start()
 
-    storage_status = multiprocessing.Process(target=request_storage_status)
+    storage_status = Thread(target=request_storage_status)
     processes.append(storage_status)
     storage_status.start()
 

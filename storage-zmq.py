@@ -1,5 +1,6 @@
-
 import multiprocessing
+from threading import Thread
+from threading import Lock
 import time
 import zmq
 import socket
@@ -9,6 +10,166 @@ import psutil
 import netifaces
 
 master_ip = "192.168.56.10"
+CLIENT_FILE_RECV_PORT = "56000"
+CLIENT_FILE_SEND_PORT = "55000"
+
+##### PortManager begin
+class PortManager:
+    """
+    Class to assign and release port numbers for a storage machine dynamically
+    """
+    def __init__(self):
+        self.context = zmq.Context()
+        self.socket = self.context.socket(zmq.REP)  # single socket is capable of binding to multiple ports
+        self.assigned_ports = set() # set of assigned ports
+        self.port_lock = Lock()     # lock for atomic port management
+        self.start_port = 55000                 # start port num
+        self.end_port = self.start_port + 100   # end port num = start + limit
+    
+    def __del__(self):
+        self.context.destroy()
+    
+    def assign_port(self):
+        """
+        Tries to asssign a port between starting and ending port numbers.
+        @return assigned port number if assigned a port, else -1
+        """
+        with self.port_lock:
+            for port in range(self.start_port, self.end_port):
+                if port not in self.assigned_ports:
+                    self.open_port(port)
+                    self.assigned_ports.add(port)
+                    return port
+        return -1
+
+    def release_port(self, port):
+        """
+        Tries to release a port that is registered to the assigned port set.
+        """
+        with self.port_lock:
+            if port in self.assigned_ports:
+                self.close_port(port)
+                self.assigned_ports.remove(port)
+    
+    def open_port(self, port):
+        endpoint = f"tcp://*:{port}"
+        self.socket.bind(endpoint)
+        print(f"Opened port {port}")
+
+    def close_port(self, port):
+        endpoint = f"tcp://*:{port}"
+        self.socket.unbind(endpoint)
+        print(f"Closed port {port}")
+##### PortManager end
+
+# initiate the port manager
+port_manager = PortManager()
+
+# CLIENT_FILE_RECV_PORT = "56000"
+# I assume that master port 50005 listens for the storage port notifications
+# I assume master will give client's ip, id of the requested file as filename, and file's output name
+# I assume client will be renaming the file after receiving the necessary data
+def send_file(port_manager: PortManager, cli_addr: str, filename: str, out_filename: str):
+    context = zmq.Context()
+    ip_addr = get_ip_address()
+    
+    # open a port
+    port = port_manager.assign_port()
+    if port == -1:
+        print(f"Storage {ip_addr}: Could not assign a port")
+    
+    # notify master on port update
+    """
+    PORT UPDATE:
+    if positive, then send string message: opened tcp://*:{port}
+    if negative, then send string message: failed tcp://*, then exit
+    """
+    port_sender = context.socket(zmq.PUSH)
+    port_sender.connect(f"tcp://{master_ip}:50005")
+    if port > 0:
+        port_sender.send(f"opened tcp://*:{port}")
+    else:
+        port_sender.send(f"failed tcp://*")
+        context.destroy()
+        return
+    port_sender.close()
+
+    # no need to get a response from master, continue with client connection
+
+    # wait for the client's connection signal
+    """ I assume that client will be notified of assigned dynamic port 
+    and will send a dummy message to notify storage side that it is connected """    
+    conn_socket = context.socket(zmq.PULL)
+    conn_socket.bind(f"tcp://*:{port}")
+    conn_socket.recv_string()   # will block until a msg is received
+    # after this point, we know that client is connected to storage's port
+    conn_socket.unbind()
+    conn_socket.close()
+    
+    # connect to client file receive port
+    # I assumed client port 56000 is used to receive file
+    print(f"{ip_addr}: Connecting to {cli_addr}")
+    push_socket = context.socket(zmq.PUSH)
+    push_socket.connect(f"tcp://{cli_addr}:{CLIENT_FILE_RECV_PORT}")
+
+    # send file to client
+    with open(filename, "rb") as file:
+        file_data = file.read()
+        push_socket.send_multipart(out_filename, file_data)
+
+    # TODO notify master?
+
+    context.destroy()
+    return
+
+# I assume master will give client's ip and an id for the incoming file as filename
+def recv_file(port_manager: PortManager, cli_addr: str, filename: str):
+    context = zmq.Context()
+    ip_addr = get_ip_address()
+    
+    # open a port
+    port = port_manager.assign_port()
+    if port == -1:
+        print(f"Storage {ip_addr}: Could not assign a port")
+    
+    # notify master on port update
+    """
+    PORT UPDATE:
+    if positive, then send string message: opened tcp://*:{port}
+    if negative, then send string message: failed tcp://*, then exit
+    """
+    port_sender = context.socket(zmq.PUSH)
+    port_sender.connect(f"tcp://{master_ip}:50005")
+    if port > 0:
+        port_sender.send(f"opened tcp://*:{port}")
+    else:
+        port_sender.send(f"failed tcp://*")
+        context.destroy()
+        return
+    port_sender.close()
+
+    # connect to client file sending port
+    print(f"{ip_addr}: Connecting to {cli_addr}")
+    pull_socket = context.socket(zmq.PULL)
+    pull_socket.bind(f"tcp://{cli_addr}:{CLIENT_FILE_SEND_PORT}")
+
+    # receive file data from client
+    file_data = pull_socket.recv()
+    if file_data == "error":
+        # handle error
+        pass
+    
+    # save received file to disk
+    with open(f"{filename}", "wb") as file:
+        file.write(file_data)
+    
+    # TODO send file upload notification to master
+
+
+    pull_socket.unbind()
+    pull_socket.close()
+    context.destroy()
+    return
 
 def get_ip_address(ifname='enp0s8'):
     try:
@@ -18,7 +179,6 @@ def get_ip_address(ifname='enp0s8'):
     except (KeyError, IndexError) as e:
         print(f"Error getting IP address: {e}")
         return None
-    
 
 def send_ip():
     print("sending ip address to master")
@@ -36,7 +196,7 @@ def get_available_storage(path='/'):
     available_space = disk_usage.free
     return available_space
 
-def test():
+def test_master_storage_stringrequest():
     context = zmq.Context()
 
     #  Socket to talk to server
@@ -83,17 +243,17 @@ def request_handler():
 if __name__ == "__main__":
     processes = []
 
-    ip_process = multiprocessing.Process(target=send_ip)
+    ip_process = Thread(target=send_ip)
     ip_process.start()
     processes.append(ip_process)
 
-    request_handler_process = multiprocessing.Process(target=request_handler)
+    request_handler_process = Thread(target=request_handler)
     processes.append(request_handler_process)
     request_handler_process.start()
 
-    test_process = multiprocessing.Process(target=test)
-    processes.append(test_process)
-    test_process.start()
+    # test_process = Thread(target=test)
+    # processes.append(test_process)
+    # test_process.start()
 
     for p in processes:
         p.join()

@@ -2,3 +2,4 @@
 50001: storage - listen for storage requests
 51000: master - request handler
 52000: storage - request handler
+55000-55099: storage - dynamic ports
