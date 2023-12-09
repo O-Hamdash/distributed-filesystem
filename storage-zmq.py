@@ -7,6 +7,7 @@ import fcntl
 import struct
 import psutil
 import netifaces
+from threading import Thread
 
 master_ip = "192.168.56.10"
 
@@ -14,7 +15,7 @@ def get_ip_address(ifname='enp0s8'):
     try:
         addresses = netifaces.ifaddresses(ifname)
         ip_address = addresses[netifaces.AF_INET][0]['addr']
-        return ip_address
+        return str(ip_address)
     except (KeyError, IndexError) as e:
         print(f"Error getting IP address: {e}")
         return None
@@ -65,7 +66,8 @@ def test():
 def request_handler():
     context = zmq.Context()
     socket = context.socket(zmq.REP)
-    socket.bind("tcp://*:52000")
+    local_ip = get_ip_address()
+    socket.bind(f"tcp://{local_ip}:52000")
 
     while True:
         #  Wait for next request from server
@@ -81,6 +83,7 @@ def request_handler():
         socket.send_string(str(reply))
 
 if __name__ == "__main__":
+    '''
     processes = []
 
     ip_process = multiprocessing.Process(target=send_ip)
@@ -91,9 +94,27 @@ if __name__ == "__main__":
     processes.append(request_handler_process)
     request_handler_process.start()
 
-    test_process = multiprocessing.Process(target=test)
-    processes.append(test_process)
-    test_process.start()
+    #test_process = multiprocessing.Process(target=test)
+    #processes.append(test_process)
+    #test_process.start()
 
     for p in processes:
         p.join()
+    '''
+
+    threads = []
+
+    ip_process = Thread(target=send_ip)
+    ip_process.start()
+    threads.append(ip_process)
+
+    request_handler_process = Thread(target=request_handler)
+    threads.append(request_handler_process)
+    request_handler_process.start()
+
+    #test_process = Thread(target=test)
+    #threads.append(test_process)
+    #test_process.start()
+
+    for t in threads:
+        t.join()

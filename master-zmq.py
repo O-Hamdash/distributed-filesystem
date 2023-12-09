@@ -1,6 +1,7 @@
 import multiprocessing
 import time
 import zmq
+from threading import Thread
 
 master_ip = "192.168.56.10"
 
@@ -20,18 +21,22 @@ def listen_for_ips():
         storage_ips.add(address.get("ip"))
         print(storage_ips)
 
-def request_storage_status(storage_ip="192.168.56.101"):
-    context = zmq.Context()
+def request_storage_status():
+    print(storage_ips)
+    for storage_ip in storage_ips:
 
-    #  Socket to talk to storage
-    socket = context.socket(zmq.REQ)
-    socket.connect("tcp://" + storage_ip + ":52000")
-    
-    message = "storage"
-    socket.send_string(message)
-    reply = socket.recv_string()
+        print(f"requesting available storage for {storage_ip}")
+        context = zmq.Context()
 
-    print(f"available storage: {reply}")
+        #  Socket to talk to storage
+        socket = context.socket(zmq.REQ)
+        socket.connect("tcp://" + storage_ip + ":52000")
+        
+        message = "storage"
+        socket.send_string(message)
+        reply = socket.recv_string()
+
+        print(f"available storage: {reply}")
 
 def test():
     context = zmq.Context()
@@ -50,6 +55,7 @@ def test():
         socket.send(b"World")
 
 if __name__ == "__main__":
+    '''
     processes = []
 
     ip_process = multiprocessing.Process(target=listen_for_ips)
@@ -60,9 +66,36 @@ if __name__ == "__main__":
     processes.append(test_receiver)
     test_receiver.start()
 
+    print("before sleep")
+    time.sleep(10)
+    print("after sleep")
+
     storage_status = multiprocessing.Process(target=request_storage_status)
     processes.append(storage_status)
     storage_status.start()
 
     for p in processes:
         p.join()
+    '''
+
+    threads = []
+
+    ip_process = Thread(target=listen_for_ips)
+    threads.append(ip_process)
+    ip_process.start()
+
+    test_receiver = Thread(target=test)
+    threads.append(test_receiver)
+    test_receiver.start()
+
+    print("before sleep")
+    time.sleep(10)
+    print("after sleep")
+
+    storage_status = Thread(target=request_storage_status)
+    threads.append(storage_status)
+    storage_status.start()
+
+    for t in threads:
+        t.join()
+    
