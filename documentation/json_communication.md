@@ -31,7 +31,7 @@ This will be used by the master to ask all storage nodes to send their available
 ### 4. Available_storage_reply
 This will be used by the storage nodes to reply with their available storage space. The json generator: `generate_json("available_storage_reply", src_ip=get_ip_address(), msg=str(get_available_storage()))`
 ### 5. Port_request
-This will be called by the master node to the storage node or to the client in order for it to create a port for file upload . The json generator: `generate_json("port_request", file_id=chosen_file_id_by_master)`
+This will be called by the master node to the storage node in order for it to create a port for file upload . The json generator: `generate_json("port_request", file_id=chosen_file_id_by_master)`
 ### 6. Port_reply
 This will be the reply to the master sent by the storage node. The json generator: `generate_json("port_reply", src_ip=get_ip_address(), port=generated_port)`
 ### 7. Upload_details
