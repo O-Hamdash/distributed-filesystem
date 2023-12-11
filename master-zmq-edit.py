@@ -34,7 +34,7 @@ def request_storage_status(storage_ip="192.168.56.101"):
     print(f"available storage: {reply}")
     context.destroy()
 
-def test_storage_send_file():
+def test_send_file():
     context = zmq.Context()
     socket = context.socket(zmq.REQ)
     # request_storage_status()
@@ -48,11 +48,12 @@ def test_storage_send_file():
     # master sends request to storage
     print("sending testsendfile")
     storage_ip="192.168.56.101"
+    client_ip="192.168.56.10"
     socket.connect("tcp://" + storage_ip + ":52000")
     
     filename = "test.txt"
-    out_filename = "recvdtest.txt"
-    message = f"testsendfile {filename} {out_filename}"    # filename was already decided by master
+    out_filename = "senttest.txt"
+    message = f"testsendfile {client_ip} {filename} {out_filename}"    # filename was already decided by master
     port_recv_socket = context.socket(zmq.PULL)
     port_recv_socket.bind(f"tcp://*:50005")
     socket.send_string(message)
@@ -77,6 +78,35 @@ def test_storage_send_file():
 
     context.destroy()
     # test send file from storage to client end
+
+def test_recv_file():
+    context = zmq.Context()
+    socket = context.socket(zmq.REQ)
+
+    time.sleep(5)
+
+    print("sending testrecvfile")
+    storage_ip="192.168.56.101"
+    client_ip="192.168.56.10"
+    socket.connect("tcp://" + storage_ip + ":52000")
+
+    filename = "senttest.txt"
+    message = f"testrecvfile {client_ip} {filename}"    # filename was already decided by master
+    port_recv_socket = context.socket(zmq.PULL)
+    port_recv_socket.bind(f"tcp://*:50005")
+    socket.send_string(message)
+
+    # master receives storage's dynamic port
+    message = port_recv_socket.recv_string()
+    print(f"received: {message}, port is {message[-5:]}")
+
+    file_push_socket = context.socket(zmq.PUSH)
+    file_push_socket.connect("tcp://" + "192.168.56.101" + f":{message[-5:]}")
+    
+    with open(filename, "rb") as file:
+        file_data = file.read()
+    print("sending file")
+    file_push_socket.send(file_data)
 
 
 def test():
@@ -110,9 +140,13 @@ if __name__ == "__main__":
     # processes.append(storage_status)
     # storage_status.start()
 
-    testsendfile = Thread(target=test_storage_send_file)
+    testsendfile = Thread(target=test_send_file)
     processes.append(testsendfile)
     testsendfile.start()
+
+    testrecvfile = Thread(target=test_recv_file)
+    processes.append(testrecvfile)
+    testrecvfile.start()
 
     for p in processes:
         p.join()

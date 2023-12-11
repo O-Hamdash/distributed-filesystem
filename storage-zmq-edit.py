@@ -95,9 +95,7 @@ def send_file(port_manager: PortManager, cli_addr: str, filename: str, out_filen
         port_sender.send_string(f"opened tcp://*:{port}")
     else:
         port_sender.send_string(f"failed tcp://*")
-        port_sender.close()
         return
-    port_sender.close()
 
     # no need to get a response from master, continue with client connection
 
@@ -113,8 +111,6 @@ def send_file(port_manager: PortManager, cli_addr: str, filename: str, out_filen
         send_file_socket.send_multipart([out_filename.encode(), file_data])
     print(f"send file to {cli_addr}:56000")
 
-    # TODO notify master?
-
     port_manager.release_port(port)
 
     # send file upload notification to master will be done in request handler
@@ -129,44 +125,39 @@ def recv_file(port_manager: PortManager, cli_addr: str, filename: str):
     port = port_manager.assign_port()
     if port == -1:
         print(f"Storage {ip_addr}: Could not assign a port")
-    
-    # notify master on port update
-    """
-    PORT UPDATE:
-    if positive, then send string message: opened tcp://*:{port}
-    if negative, then send string message: failed tcp://*, then exit
-    """
-    port_sender = context.socket(zmq.PUSH)
-    port_sender.connect(f"tcp://{master_ip}:50005")
-    if port > 0:
-        port_sender.send_string(f"opened tcp://*:{port}")
     else:
-        port_sender.send_string(f"failed tcp://*")
-        return
-    port_sender.close()
-
-    # connect to client file sending port
-    print(f"{ip_addr}: Connecting to {cli_addr}")
-    pull_socket = context.socket(zmq.PULL)
-    pull_socket.bind(f"tcp://{cli_addr}:{CLIENT_FILE_SEND_PORT}")
+        recv_file_socket = context.socket(zmq.PULL)
+        recv_file_socket.bind(f"tcp://*:{port}")
+        print(f"Storage {ip_addr}: Assigned port {port}")
+    
+    # # notify master on port update
+    # """
+    # PORT UPDATE:
+    # if positive, then send string message: opened tcp://*:{port}
+    # if negative, then send string message: failed tcp://*, then exit
+    # """
+    # port_sender = context.socket(zmq.PUSH)
+    # port_sender.connect(f"tcp://{cli_addr}:50005")
+    # if port > 0:
+    #     port_sender.send_string(f"opened tcp://*:{port}")
+    # else:
+    #     port_sender.send_string(f"failed tcp://*")
+    #     return
 
     # receive file data from client
-    file_data = pull_socket.recv()
-    if str(file_data) == "error":
+    print("listening to recv file")
+    file_data = recv_file_socket.recv()
+    print("recv'd file")
+    if str(file_data.decode()) == "error":
         # handle error
         pass
-    
+
     # create new file and write received file data on new file
     with open(f"{filename}", "wb") as file:
         file.write(file_data)
     
-    # TODO send file upload notification to master
-
-    pull_socket.unbind()
-    pull_socket.close()
     port_manager.release_port(port)
-    context.destroy()
-    return
+    return True
 
 def get_ip_address(ifname='enp0s8'):
     try:
@@ -237,8 +228,12 @@ def request_handler():
             reply = str(get_available_storage())
         elif message_args[0] == "testsendfile":
             print("received testsendfile, starting")
-            send_file(port_manager, master_ip, message_args[1], message_args[2])
+            send_file(port_manager, message_args[1], message_args[2], message_args[3])
             reply = "sendfile successful"
+        elif message_args[0] == "testrecvfile":
+            print("received testrecvfile, starting")
+            recv_file(port_manager, message_args[1], message_args[2])
+            reply = "recvfile successful"
 
         #  Send reply back to client
         socket.send_string(reply)
