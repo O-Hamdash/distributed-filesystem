@@ -40,3 +40,5 @@ This will be used by the master to send the upload details to the client. Json g
 This will be used by the storage to notify the master that it received the file. Json generator: `generate_json("upload_success",src_ip=get_ip_address(), file_id=chosen_file_id_by_master)`
 ### 9. Download_details
 This will be sent from the master to the storage node when the client wants to download a file. The json generator: `generate_json("download_details", dst_ip=ip_of_client_requesting_download, file_id=id_of_file_to_download)`
+### 10. Download_error
+This will be sent from the master to the client in case of an incorrect filename. The json will be: `generate_json("download_error")`
