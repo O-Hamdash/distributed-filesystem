@@ -1,4 +1,8 @@
+# Statically assigned ports
 50000: master - listens for ip pushes
-50001: storage - listen for storage requests
-51000: master - request handler
-52000: storage - request handler
+50001: storage - listen for master requests
+50002: master - listen for client requests
+50003: client - receive files for download
+
+# Dynamically assigned ports:
+55000-55099: storage - receive files for upload
