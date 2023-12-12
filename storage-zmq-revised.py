@@ -171,16 +171,17 @@ def request_handler(port_manager: PortManager):
         elif _op == "download_details":
             dst_ip = json_message.get("dst_ip")
             file_id = json_message.get("file_id")
-            recv_file_process = Thread(target=send_file, args=(port_manager, dst_ip, file_id))
-            recv_file_process.start()
-            recv_file_process.join()
+            send_file_thread = Thread(target=send_file, args=(port_manager, dst_ip, file_id))
+            send_file_thread.start()
+            send_file_thread.join()
             # IMPORTANT: "download_success": dummy message to reply master for download???
             reply = generate_json("download_success")
         # IMPORTANT: "port_request" changed to "upload_request" for naming convention
         elif _op == "upload_request":
             file_id = json_message.get("file_id")
-            recv_file(port_manager, file_id)
-
+            recv_file_thread = Thread(target=recv_file, args=(port_manager, file_id))
+            recv_file_thread.start()
+            recv_file_thread.join()
             reply = generate_json("upload_success",src_ip=get_ip_address(), file_id=file_id)
 
         #  Send reply back to client
