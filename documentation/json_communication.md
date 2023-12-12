@@ -33,7 +33,7 @@ This will be used by the storage nodes to reply with their available storage spa
 ### 5. Port_request
 This will be called by the master node to the storage node in order for it to create a port for file upload . The json generator: `generate_json("port_request", file_id=chosen_file_id_by_master)`
 ### 6. Port_reply
-This will be the reply to the master sent by the storage node. The json generator: `generate_json("port_reply", src_ip=get_ip_address(), port=generated_port)`
+This will be the reply to the master sent by the storage node. The json generator: `generate_json("port_reply", port=generated_port)`
 ### 7. Upload_details
 This will be used by the master to send the upload details to the client. Json generator: `generate_json("upload_details",dst_ip=chosen_storage_ip , port=port_generated_by_storage)`
 ### 8. Upload_success
