@@ -1,25 +1,15 @@
 
-import multiprocessing
-import time
 import zmq
-import socket
-import fcntl
-import struct
 import psutil
-import netifaces
 from threading import Thread
+
+from shared import *
+
+
 
 master_ip = "192.168.56.10"
 
-def get_ip_address(ifname='enp0s8'):
-    try:
-        addresses = netifaces.ifaddresses(ifname)
-        ip_address = addresses[netifaces.AF_INET][0]['addr']
-        return str(ip_address)
-    except (KeyError, IndexError) as e:
-        print(f"Error getting IP address: {e}")
-        return None
-    
+
 
 def send_ip():
     print("sending ip address to master")
@@ -30,7 +20,7 @@ def send_ip():
     ip_sender.connect(f"tcp://{master_ip}:50000")
     
     ip_sender.send_pyobj(address)
-    print("Address sent successfully.")
+    print("Address sent.")
 
 def get_available_storage(path='/'):
     disk_usage = psutil.disk_usage(path)
@@ -82,39 +72,38 @@ def request_handler():
         #  Send reply back to client
         socket.send_string(str(reply))
 
+
+def client_request_handler():
+    context = zmq.Context()
+    socket = context.socket(zmq.REP)
+    socket.bind("tcp://192.168.56.10:50002")
+
+    while True:
+        message = socket.recv_pyobj()
+        
+        if message["op"] == "test1":
+            print(f"received test1 from {message['src_ip']}")
+        elif message["op"] == "test2":
+            print(f"received test2 from {message['src_ip']}")
+        elif message["op"] == "test3":
+            print(f"received test3 from {message['src_ip']}")
+
+        socket.send_string("success")
+
 if __name__ == "__main__":
-    '''
-    processes = []
-
-    ip_process = multiprocessing.Process(target=send_ip)
-    ip_process.start()
-    processes.append(ip_process)
-
-    request_handler_process = multiprocessing.Process(target=request_handler)
-    processes.append(request_handler_process)
-    request_handler_process.start()
-
-    #test_process = multiprocessing.Process(target=test)
-    #processes.append(test_process)
-    #test_process.start()
-
-    for p in processes:
-        p.join()
-    '''
-
     threads = []
 
-    ip_process = Thread(target=send_ip)
-    ip_process.start()
-    threads.append(ip_process)
+    ip_sender = Thread(target=send_ip)
+    threads.append(ip_sender)
 
     request_handler_process = Thread(target=request_handler)
     threads.append(request_handler_process)
-    request_handler_process.start()
 
-    #test_process = Thread(target=test)
-    #threads.append(test_process)
-    #test_process.start()
+    client_test = Thread(target=client_request_handler)
+    threads.append(client_test)
+
+    for t in threads:
+        t.start()
 
     for t in threads:
         t.join()

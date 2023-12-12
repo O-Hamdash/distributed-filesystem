@@ -1,11 +1,5 @@
-import socket
-import time
-from collections import defaultdict
-from threading import RLock, Thread
-
-import zmq
-import json
 import os
+
 
 persistent_dir = "./data/"
 last_id_file = persistent_dir + "id"
@@ -29,8 +23,6 @@ def generate_uid():
 
 
 class FileSystemObject:
-    id_lock = RLock()
-
     def __init__(self, name, type, id=None):
         self.id = id
         if self.id == None:
@@ -162,7 +154,7 @@ def delete(filesystem: FileSystemObject, path: str):
     if not success:
         print(f"no such item: {path}")
 
-if __name__ == "__main__":
+""" if __name__ == "__main__":
     try:
         # Load and deserialize from the file
         with open(fs_backup_file, "r") as file:
@@ -191,4 +183,4 @@ if __name__ == "__main__":
     # Serialize and save to a file
     with open(fs_backup_file, "w") as file:
         serialized_data = file_system_root.to_dict()
-        json.dump(serialized_data, file)
+        json.dump(serialized_data, file) """
