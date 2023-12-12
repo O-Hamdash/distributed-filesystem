@@ -62,7 +62,7 @@ class PortManager:
                 self.assigned_ports.remove(port)
 ##### PortManager end
 
-def send_file(port_manager: PortManager, cli_addr: str, filename: str):
+def send_file(port_manager: PortManager, filename: str):
     context = zmq.Context()
     ip_addr = get_ip_address()
     
