@@ -174,7 +174,6 @@ def recv_file(port_manager: PortManager, filename: str):
     # receive file data from client
     file_data = recv_file_socket.recv()
     print(f"Storage {ip_addr}:recv'd file")
-
     # create new file and write received file data on new file
     with open(f"{filename}", "wb") as file:
         file.write(file_data)

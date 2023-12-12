@@ -62,7 +62,7 @@ class PortManager:
                 self.assigned_ports.remove(port)
 ##### PortManager end
 
-def send_file(port_manager: PortManager, filename: str):
+def send_file(port_manager: PortManager, cli_addr: str, filename: str, socket):
     context = zmq.Context()
     ip_addr = get_ip_address()
     
@@ -70,35 +70,29 @@ def send_file(port_manager: PortManager, filename: str):
     port = port_manager.assign_port()
     if port == -1:
         print(f"Storage {ip_addr}: Could not assign a port")
+        # reply = generate_json("download_error")
+        # socket.send_json(reply)
+        return False
     else:
         send_file_socket = context.socket(zmq.PUSH)
-        send_file_socket.connect(f"tcp://*:{port}")
-        print(f"Storage {ip_addr}: Assigned port {port}")
-    
-    """
-    IMPORTANT: "download_details" and "port_request" are mismatching.
-    When storage receives "download_details", it directly tries assigning a port.
-    Therefore, "port_request" should not be used. 
-    "port_response" will be used to return the assigned port to master side.
-    For that purpose, master should listen (PULL) that from another port ( assumed 50005?)
-    """
-    # notify master on port update
-    port_sender = context.socket(zmq.PUSH)
-    port_sender.connect(f"tcp://{master_ip}:50005")
-    if port > 0:
-        port_sender.send_json(generate_json("port_reply", src_ip=get_ip_address(), port=port))
-    else:
-        # port = -1 if a port could not be assigned
-        port_sender.send_json(generate_json("port_reply", src_ip=get_ip_address(), port=port))
-        return False
+        send_file_socket.connect(f"tcp://{cli_addr}:50003")
+        print(f"Storage {ip_addr}: connected to tcp://{cli_addr}:50003 to send file")
 
     # send file to client
-    with open(filename, "rb") as file:
-        file_data = file.read()
-        send_file_socket.send(file_data)
-    print(f"Storage {ip_addr}: file sent through port {port}")
-
+    try:
+        with open(filename, "rb") as file:
+            file_data = file.read()
+            send_file_socket.send(file_data)
+        print(f"Storage {ip_addr}: file sent through port {port}")
+    except Exception as e:
+        print(f"Storage {ip_addr}: received error {str(e)}")
+        # reply = generate_json("download_error")
+        # socket.send_json(reply)
+        return False
+    
     port_manager.release_port(port)
+    # reply = generate_json("download_error")
+    # socket.send_json(reply)
     return True
 
 def recv_file(port_manager: PortManager, filename: str):
@@ -115,7 +109,22 @@ def recv_file(port_manager: PortManager, filename: str):
         recv_file_socket.connect(f"tcp://*:{port}")
         print(f"Storage {ip_addr}: Assigned port {port}")
     
-    # master will not be notified on port update
+    """
+    IMPORTANT: "upload_request" and "port_request" are mismatching.
+    When storage receives "upload_request", it directly tries assigning a port.
+    Therefore, "port_request" should not be used. 
+    "port_response" will be used to return the assigned port to master side.
+    For that purpose, master should listen (PULL) that from another port ( assumed 50005?)
+    """
+    # notify master on port update
+    port_sender = context.socket(zmq.PUSH)
+    port_sender.connect(f"tcp://{master_ip}:50005")
+    if port > 0:
+        port_sender.send_json(generate_json("port_reply", src_ip=get_ip_address(), port=port))
+    else:
+        # port = -1 if a port could not be assigned
+        port_sender.send_json(generate_json("port_reply", src_ip=get_ip_address(), port=port))
+        return False
 
     # receive file data from client
     file_data = recv_file_socket.recv()
@@ -168,14 +177,16 @@ def request_handler(port_manager: PortManager):
         if _op == "available_storage":
             storage = str(get_available_storage())
             reply = generate_json("available_storage_reply", src_ip=get_ip_address(), msg=storage)
+            # Send reply back to client
+            socket.send_json(reply)
         elif _op == "download_details":
             dst_ip = json_message.get("dst_ip")
             file_id = json_message.get("file_id")
-            send_file_thread = Thread(target=send_file, args=(port_manager, dst_ip, file_id))
+            send_file_thread = Thread(target=send_file, args=(port_manager, dst_ip, file_id, socket))
             send_file_thread.start()
             send_file_thread.join()
-            # IMPORTANT: "download_success": dummy message to reply master for download???
             reply = generate_json("download_success")
+            # IMPORTANT: "download_success": dummy message to reply master for download???
         # IMPORTANT: "port_request" changed to "upload_request" for naming convention
         elif _op == "upload_request":
             file_id = json_message.get("file_id")
@@ -183,9 +194,7 @@ def request_handler(port_manager: PortManager):
             recv_file_thread.start()
             recv_file_thread.join()
             reply = generate_json("upload_success",src_ip=get_ip_address(), file_id=file_id)
-
-        #  Send reply back to client
-        socket.send_json(reply)
+        
 
 if __name__ == "__main__":
     processes = []
