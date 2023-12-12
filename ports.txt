@@ -1,5 +1,5 @@
 # Statically assigned ports
-50000: master - listens for ip pushes
+50000: master - listens for ip pushes from storage nodes
 50001: storage - listen for master requests
 50002: master - listen for client requests
 50003: client - receive files for download
