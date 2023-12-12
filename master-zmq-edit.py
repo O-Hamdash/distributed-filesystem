@@ -34,6 +34,17 @@ def request_storage_status(storage_ip="192.168.56.101"):
     print(f"available storage: {reply}")
     context.destroy()
 
+def generate_json(op, src_ip=None, path=None, msg=None, dst_ip=None, port=None, file_id=None):
+    return {
+        "op": op, 
+        "src_ip": str(src_ip), 
+        "path": str(path), 
+        "msg": str(msg), 
+        "dst_ip": str(dst_ip), 
+        "port": str(port), 
+        "file_id": str(file_id)
+    }
+
 def test_send_file():
     context = zmq.Context()
     socket = context.socket(zmq.REQ)
@@ -49,35 +60,29 @@ def test_send_file():
     print("sending testsendfile")
     storage_ip="192.168.56.101"
     client_ip="192.168.56.10"
-    socket.connect("tcp://" + storage_ip + ":52000")
+    socket.connect("tcp://" + storage_ip + ":50001")
     
     filename = "test.txt"
-    out_filename = "senttest.txt"
-    message = f"testsendfile {client_ip} {filename} {out_filename}"    # filename was already decided by master
-    port_recv_socket = context.socket(zmq.PULL)
-    port_recv_socket.bind(f"tcp://*:50005")
-    socket.send_string(message)
-
-    # master receives storage's dynamic port
-    message = port_recv_socket.recv_string()
-    print(f"received: {message}, port is {message[-5:]}")
+    message = generate_json("download_details", dst_ip=client_ip, file_id=filename)
+    # message = f"testsendfile {client_ip} {filename} {out_filename}"    # filename was already decided by master
+    socket.send_pyobj(message)
+    print(f"sent message: {message}")
 
     # I assume master sends info to client so that client can connect to storage port
     # client connects to storage's dynamic port and sends dummy message
-    notify_socket = context.socket(zmq.REQ)
-    notify_socket.connect("tcp://" + "192.168.56.101" + f":{message[-5:]}")
-    notify_socket.send_string("dummy msg")
-    print("dummy msg sent, waiting for file")
+    download_socket = context.socket(zmq.PULL)
+    download_socket.bind("tcp://" + "192.168.56.10" + f":50003")
     
     # storage sends file 
-    msglist = notify_socket.recv_multipart()
+    file_data = download_socket.recv()
     print("file has been received")
-    with open(f"{msglist[0].decode()}", "wb") as file:
-        file.write(msglist[1])
+    with open(f"downloadad_file.txt", "wb") as file:
+        file.write(file_data)
     print("created and wrote file")
 
-    context.destroy()
-    # test send file from storage to client end
+    message = socket.recv_pyobj()
+    print(f"recvd {message}")
+
 
 def test_recv_file():
     context = zmq.Context()
@@ -88,25 +93,28 @@ def test_recv_file():
     print("sending testrecvfile")
     storage_ip="192.168.56.101"
     client_ip="192.168.56.10"
-    socket.connect("tcp://" + storage_ip + ":52000")
+    socket.connect("tcp://" + storage_ip + ":50001")
 
-    filename = "senttest.txt"
-    message = f"testrecvfile {client_ip} {filename}"    # filename was already decided by master
+    filename = "uploaded_file.txt"
+    message = generate_json("port_request", dst_ip=client_ip, file_id=filename)
+    socket.send_pyobj(message)
+
     port_recv_socket = context.socket(zmq.PULL)
     port_recv_socket.bind(f"tcp://*:50005")
-    socket.send_string(message)
-
-    # master receives storage's dynamic port
-    message = port_recv_socket.recv_string()
-    print(f"received: {message}, port is {message[-5:]}")
+    message = port_recv_socket.recv_pyobj()
+    print(f"received: {message}")
+    port = message.get("port")
 
     file_push_socket = context.socket(zmq.PUSH)
-    file_push_socket.connect("tcp://" + "192.168.56.101" + f":{message[-5:]}")
+    file_push_socket.connect("tcp://" + "192.168.56.101" + f":{port}")
     
-    with open(filename, "rb") as file:
+    with open("downloadad_file.txt", "rb") as file:
         file_data = file.read()
     print("sending file")
     file_push_socket.send(file_data)
+
+    message = socket.recv_pyobj()
+    print(f"recvd {message}")
 
 
 def test():
