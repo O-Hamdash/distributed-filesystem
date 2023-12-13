@@ -3,16 +3,11 @@ from threading import Thread
 from threading import Lock
 import time
 import zmq
-import socket
-import fcntl
-import struct
 import psutil
 import netifaces
 import os
 
 master_ip = "192.168.56.10"
-CLIENT_FILE_RECV_PORT = "56000"
-CLIENT_FILE_SEND_PORT = "55000"
 
 def generate_json(op, src_ip=None, path=None, msg=None, dst_ip=None, port=None, file_id=None):
     return {
@@ -79,6 +74,7 @@ def send_file(port_manager: PortManager, cli_addr: str, filename: str):
         print(f"Storage {ip_addr}: file sent through port {port}")
     except Exception as e:
         print(f"Storage {ip_addr}: received error {str(e)}")
+        port_manager.release_port(port)
         return False
     
     port_manager.release_port(port)
