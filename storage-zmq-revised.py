@@ -141,7 +141,7 @@ def request_handler(port_manager: PortManager):
     socket.bind("tcp://*:50001")
 
     # port for pushing port response to master, assuming master will have some listener for it
-    # if storage should ONLY send port_response AND NOT port_request PLUS a message for receiving the file, then delete this
+    # if storage should ONLY send port_response  AND NOT port_request PLUS a message for receiving the file, then delete this
     port_sender = context.socket(zmq.PUSH)
     port_sender.connect(f"tcp://{master_ip}:50005")
 
@@ -162,7 +162,7 @@ def request_handler(port_manager: PortManager):
             send_file_thread = Thread(target=send_file, args=(port_manager, dst_ip, file_id))
             send_file_thread.start()
             send_file_thread.join()
-            reply = generate_json("filerecv")
+            reply = generate_json("filesent")
         elif _op == "port_request":
             file_id = json_message.get("file_id")
 
