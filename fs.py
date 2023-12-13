@@ -104,6 +104,74 @@ def search_local_file(file_system: FileSystemObject, file_name, current_path="",
             return f"{current_path}/{file_name}"
     return None
 
+def get_object_by_path(file_system: FileSystemObject, file_path):
+    path_dirs = file_path.split('/')
+
+    curr_fs_dir = file_system
+    for dir in path_dirs:
+        found = False
+        for fs_dir in curr_fs_dir.contents:
+            if fs_dir.name == dir:
+                curr_fs_dir = fs_dir
+                found = True
+                break
+
+        if not found:
+            # If any directory in the path is not found, return None
+            return None
+
+    # The last item in path_dirs is the file name
+    file_name = path_dirs[-1]
+
+    # Search for the file in the current directory
+    for item in curr_fs_dir.contents:
+        if item.type == "file" and item.name == file_name:
+            return item
+
+    # If the file is not found in the current directory, return None
+    return None
+
+def get_file_id_by_path(file_system: FileSystemObject, file_path):
+    path_dirs = file_path.split('/')
+
+    curr_fs_dir = file_system
+    for dir in path_dirs:
+        found = False
+        for fs_dir in curr_fs_dir.contents:
+            if fs_dir.name == dir:
+                curr_fs_dir = fs_dir
+                found = True
+                break
+
+        if not found:
+            # If any directory in the path is not found, return None
+            return None
+
+    # The last item in path_dirs is the file name
+    file_name = path_dirs[-1]
+
+    # Search for the file in the current directory
+    for item in curr_fs_dir.contents:
+        if item.type == "file" and item.name == file_name:
+            return item.id
+
+    # If the file is not found in the current directory, return None
+    return None
+
+
+def get_object_by_id(file_system: FileSystemObject, target_id):
+    if file_system.id == target_id:
+        return file_system
+
+    for item in file_system.contents:
+        result = get_object_by_id(item, target_id)
+        if result:
+            return result
+
+    # If the ID is not found in the current object or its contents
+    return None
+
+
 def add(filesystem: FileSystemObject, path: str, type: str):
     path_dirs = path.split('/')
 

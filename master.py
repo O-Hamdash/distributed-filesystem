@@ -7,6 +7,9 @@ from shared import generate_json
 from fs import *
 
 
+fs_root = FileSystemObject("/", "folder")
+
+
 master_ip = "192.168.56.10"
 download_port = "50003"
 
@@ -71,9 +74,9 @@ def master_to_storage_requester(message:dict):
     socket = context.socket(zmq.REQ)
 
     if op == "upload":
-        ###############################
-        ## TODO: get file id from DB ##
-        ###############################
+        ############################
+        ## TODO: generate file id ##
+        ############################
         file_id = "1"
 
         ##############################################################################################
@@ -97,12 +100,15 @@ def master_to_storage_requester(message:dict):
         ###############################
         ## TODO: get file id from DB ##
         ###############################
-        file_id = "1"
+
+        file = get_object_by_path(fs_root, message["path"])
+
+        file_id = str(file.id)
 
         ##################################
         ## TODO: get storage ip from DB ##
         ##################################
-        storage_ip = ""
+        storage_ip = file.ip_address
 
         dst_ip = message["src_ip"]
 
