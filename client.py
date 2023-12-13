@@ -1,66 +1,93 @@
 import zmq
+import netifaces
 import os
+import time
 
-main_server_address = "" # TODO Write the main server address
+master_ip = "192.168.56.10"
 
-def askStorageNode(upload=True, file_name=None):
+# json generator
+def generate_json(op, src_ip=None, path=None, msg=None, dst_ip=None, port=None, file_id=None):
+    return {
+        "op": op, 
+        "src_ip": str(src_ip),  
+        "path": str(path), 
+        "msg": str(msg), 
+        "dst_ip": str(dst_ip), 
+        "port": str(port), 
+        "file_id": str(file_id)
+        }
+
+def get_ip_address(ifname='enp0s8'):
+    try:
+        addresses = netifaces.ifaddresses(ifname)
+        ip_address = addresses[netifaces.AF_INET][0]['addr']
+        return str(ip_address)
+    except (KeyError, IndexError) as e:
+        print(f"Error getting IP address: {e}")
+        return None
+
+def upload(file_path):
     context = zmq.Context()
     client_socket = context.socket(zmq.REQ)
-    client_socket.connect(main_server_address)
+    client_socket.connect(f"tcp://{master_ip}:50002")
 
-    if upload:
-        client_socket.send_string("GET STORAGE NODE") # TODO Change the message for consistency
+    local_ip = get_ip_address()
+    json = generate_json("upload", src_ip=local_ip, path=file_path)
+    client_socket.send_pyobj(json)
+
+    reply = client_socket.recv_pyobj()
+    client_socket.close()
+
+    if reply["op"] == "upload_details":
+        dst_ip = reply["dst_ip"]
+        port = reply["port"]
+
+        upload_socket = context.socket(zmq.PUSH)
+        upload_socket.connect(f"tcp://{dst_ip}:{port}")
+
+        with open(file_path, "rb") as file:
+            file_data = file.read()
+            upload_socket.send(file_data)
+
+        upload_socket.close()
     else:
-        client_socket.send_string(f"GET FILE {file_name}")
-    storage_node_address = client_socket.recv_string()
+        print("Some error happened on master or storage side.")
 
-    client_socket.close()
-    return storage_node_address
-
-def upload(storage_node_address, file_name):
+def download(file_name):
     context = zmq.Context()
     client_socket = context.socket(zmq.REQ)
-    client_socket.connect(f"tcp://{storage_node_address}")
+    client_socket.connect(f"tcp://{master_ip}:50002")
 
-    with open(file_name, "rb") as file:
-        file_data = file.read()
-        client_socket.send_string(f"UPLOAD {file_data}")
-        response = client_socket.recv_string()
-        print(response)
+    local_ip = get_ip_address()
+    json = generate_json("download", src_ip=local_ip, path=file_name)
+    client_socket.send_pyobj(json)
 
+    reply = client_socket.recv_pyobj()
     client_socket.close()
 
-def download(storage_node_address, file_name, destination_folder="."):
-    context = zmq.Context()
-    client_socket = context.socket(zmq.REQ)
-    client_socket.connect(f"tcp://{storage_node_address}")
+    if reply["op"] == "download_error":
+        print("File doesn't exist in any of the storage nodes.")
+    elif reply["op"] == "download_success":
+        print("Storage node is contacted for downloading.")
+        
+        download_socket = context.socket(zmq.PULL)
+        download_socket.bind(f"tcp://{local_ip}:50003")
+        file_data = download_socket.recv()
 
-    client_socket.send_string(f"DOWNLOAD {file_name}")
-    file_data = client_socket.recv_string()
+        # file_path = os.path.join(dst_path, file_name)
+        with open(file_name, "wb") as file:
+            file.write(file_data)
 
-    destination_path = os.path.join(destination_folder, file_name)
-    with open(destination_path, "wb") as file:
-        file.write(file_data)
-
-    client_socket.close()
+        download_socket.close()
+    else:
+        print("Some error happened on master or storage side.")
 
 if __name__ == "__main__":
-    active = True
-    while active:
-        print("1. Upload File")
-        print("2. Download File")
-        print("3. Exit")
-        option = input("What do you want to do?")
-        if option == 1:
-            file_name = input("Enter file name: ")
-            storage_node_address = askStorageNode()
-            upload(storage_node_address, file_name)
-        elif option == 2:
-            file_name = input("Enter file name: ")
-            storage_node_address = askStorageNode(False, file_name)
-            download(storage_node_address, file_name)
-        elif option == 3:
-            active = False
-            print("Good bye!")
-        else:
-            print("Invalid input")
+    upload("test.txt")
+    print("Test uploaded")
+    time.sleep(10)
+    download("test.txt")
+    print("Test downloaded")
+    time.sleep(10)
+    download("test2.txt")
+    print("Error")
