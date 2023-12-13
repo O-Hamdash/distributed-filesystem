@@ -3,6 +3,7 @@
 50001: storage - listen for master requests
 50002: master - listen for client requests
 50003: client - receive files for download
+50005: master - listen for port replies from the storage
 
 # Dynamically assigned ports:
 55000-55099: storage - receive files for upload
