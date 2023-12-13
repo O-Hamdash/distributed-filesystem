@@ -23,14 +23,13 @@ def generate_uid():
 
 
 class FileSystemObject:
-    def __init__(self, name, type, id=None):
+    def __init__(self, name, type, ip_address=None, id=None):
         self.id = id
         if self.id == None:
-            with FileSystemObject.id_lock:
-                self.id = generate_uid()
+            self.id = generate_uid()
         self.name = name
         self.type = type
-        self.ip_address = None
+        self.ip_address = ip_address
         self.date_added = None
         self.date_modified = None
         self.editable = True
@@ -172,7 +171,7 @@ def get_object_by_id(file_system: FileSystemObject, target_id):
     return None
 
 
-def add(filesystem: FileSystemObject, path: str, type: str):
+def add(filesystem: FileSystemObject, path: str, type: str, ip_address=None):
     path_dirs = path.split('/')
 
     path_dirs.pop(0)
@@ -197,7 +196,10 @@ def add(filesystem: FileSystemObject, path: str, type: str):
             print(f"{type} with name {to_add} already exists in this location")
             return
 
-    curr_fs_dir.contents.append(FileSystemObject(name=to_add, type=type))
+    file = FileSystemObject(name=to_add, type=type, ip_address=ip_address)
+    curr_fs_dir.contents.append(file)
+
+    return file
         
 def delete(filesystem: FileSystemObject, path: str):
     path_dirs = path.split('/')

@@ -40,11 +40,14 @@ def get_most_available_storage_ip():
 
         #  Socket to talk to storage
         socket = context.socket(zmq.REQ)
-        socket.connect("tcp://" + storage_ip + ":52000")
+        socket.connect("tcp://" + storage_ip + ":50001")
         
-        message = "storage"
-        socket.send_string(message)
-        available_storage = int(socket.recv_string())
+        message = generate_json("available_storage")
+        socket.send_pyobj(message)
+        reply = socket.recv_pyobj()
+        available_storage = int(reply["msg"])
+
+        print(f"received available storage from {reply['src_ip']}: {reply['msg']}")
 
         if available_storage > largest_storage:
             chosen_node_ip = storage_ip
@@ -67,47 +70,44 @@ def test():
         #  Send reply back to client
         socket.send(b"World")
 
-def master_to_storage_requester(message:dict):
+def master_to_storage_requester(message:dict, reply_socket:zmq.sugar.socket.Socket):
     op = message["op"]
 
     context = zmq.Context()
     socket = context.socket(zmq.REQ)
 
     if op == "upload":
-        ############################
-        ## TODO: generate file id ##
-        ############################
-        file_id = "1"
-
-        ##############################################################################################
-        ## TODO: save file to DB (let's do it like this for now and assume there will be no errors) ##
-        ##############################################################################################
-
         dst_ip = get_most_available_storage_ip()
+
+        file = add(fs_root, message["path"], type="file", ip_address=dst_ip)
+
+        file_id = file.id
+
         socket.connect(f"tcp://{dst_ip}:50001")
 
         json = generate_json("port_request", file_id=file_id)
         socket.send_pyobj(json)
+
+        port_recv_socket = context.socket(zmq.PULL)
+        port_recv_socket.bind(f"tcp://*:50005")
+        message = port_recv_socket.recv_pyobj()
+        print(f"received: {message}")
+        port = message.get("port")
+
+        port_recv_socket.close()
+
+        reply_socket.send_pyobj(generate_json("upload_details", dst_ip=dst_ip, port=port))
+
+        ########################################################
+        ## TODO: do something with the reply (upload_success) ##
+        ########################################################
         reply = socket.recv_pyobj()
-        
-        port = reply["port"]
 
-        #######################################################################
-        ## TODO: integrate Burak's code to send the upload_details to client ##
-        #######################################################################
-    
     elif op == "download":
-        ###############################
-        ## TODO: get file id from DB ##
-        ###############################
-
         file = get_object_by_path(fs_root, message["path"])
 
         file_id = str(file.id)
 
-        ##################################
-        ## TODO: get storage ip from DB ##
-        ##################################
         storage_ip = file.ip_address
 
         dst_ip = message["src_ip"]
@@ -115,15 +115,29 @@ def master_to_storage_requester(message:dict):
         socket.connect(f"tcp://{storage_ip}:50001")
         json = generate_json("download_details", dst_ip=dst_ip, file_id=file_id)
 
-
-
-    requests = ["test1", "test2", "test3"]
-
-    for req in requests:
-        json = generate_json(req, path="/test/path.txt")
         socket.send_pyobj(json)
-        reply = socket.recv_string()
-        print(f"reply to {req}: {reply}")
+
+        socket.recv_string()
+
+        reply_socket.send_string("success!")
+
+    socket.close()
+    exit()
+
+def client_request_handler():
+    context = zmq.Context()
+    socket = context.socket(zmq.REP)
+    socket.bind(f"tcp://{master_ip}:50002")
+
+    while True:
+        # Wait for next request from client
+        message = socket.recv_pyobj()
+        print("Received request: %s" % message)
+
+        #master_to_storage_requester = Thread(target=master_to_storage_requester, args=(message,))
+        #master_to_storage_requester.start()
+
+        master_to_storage_requester(message, socket)
 
 if __name__ == "__main__":
     threads = []
@@ -131,11 +145,7 @@ if __name__ == "__main__":
     ip_listener = Thread(target=listen_for_ips)
     threads.append(ip_listener)
 
-    test_receiver = Thread(target=test)
-    threads.append(test_receiver)
-
-
-    client_handler = Thread(target=master_to_storage_requester)
+    client_handler = Thread(target=client_request_handler)
     threads.append(client_handler)
 
     for t in threads:
