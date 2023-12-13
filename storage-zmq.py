@@ -7,6 +7,7 @@ import fcntl
 import struct
 import psutil
 import netifaces
+from threading import RLock, Thread
 
 master_ip = "192.168.56.10"
 
@@ -19,7 +20,6 @@ def get_ip_address(ifname='enp0s8'):
         print(f"Error getting IP address: {e}")
         return None
     
-
 def send_ip():
     print("sending ip address to master")
     address = {"ip": "" + get_ip_address("enp0s8") + ""}
@@ -42,7 +42,7 @@ def test():
     #  Socket to talk to server
     print("Connecting to hello world server…")
     socket = context.socket(zmq.REQ)
-    socket.connect("tcp://" + master_ip + ":5555")
+    socket.connect("tcp://" + master_ip + ":50001")
 
     #  Do 10 requests, waiting each time for a response
     for request in range(10):
@@ -81,19 +81,21 @@ def request_handler():
         socket.send_string(str(reply))
 
 if __name__ == "__main__":
-    processes = []
+    threads = []
 
-    ip_process = multiprocessing.Process(target=send_ip)
+    """ ip_process = multiprocessing.Process(target=send_ip)
     ip_process.start()
-    processes.append(ip_process)
+    processes.append(ip_process) """
 
-    request_handler_process = multiprocessing.Process(target=request_handler)
+    """ request_handler_process = multiprocessing.Process(target=request_handler)
     processes.append(request_handler_process)
-    request_handler_process.start()
+    request_handler_process.start() """
 
-    test_process = multiprocessing.Process(target=test)
-    processes.append(test_process)
-    test_process.start()
+    test_process = Thread(target=test)
+    threads.append(test_process)
 
-    for p in processes:
-        p.join()
+    for t in threads:
+        t.start()
+
+    for t in threads:
+        t.join()

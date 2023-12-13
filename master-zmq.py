@@ -1,11 +1,11 @@
 import multiprocessing
 import time
 import zmq
+from threading import RLock, Thread
 
 master_ip = "192.168.56.10"
 
 storage_ips = set()
-
 
 def listen_for_ips():
     context = zmq.Context()
@@ -36,7 +36,7 @@ def request_storage_status(storage_ip="192.168.56.101"):
 def test():
     context = zmq.Context()
     socket = context.socket(zmq.REP)
-    socket.bind("tcp://*:5555")
+    socket.bind("tcp://*:50001")
 
     while True:
         #  Wait for next request from client
@@ -50,19 +50,24 @@ def test():
         socket.send(b"World")
 
 if __name__ == "__main__":
-    processes = []
+    threads = []
 
-    ip_process = multiprocessing.Process(target=listen_for_ips)
+    """ ip_process = multiprocessing.Process(target=listen_for_ips)
     processes.append(ip_process)
-    ip_process.start()
+    ip_process.start() """
 
-    test_receiver = multiprocessing.Process(target=test)
-    processes.append(test_receiver)
-    test_receiver.start()
+    test_receiver = Thread(target=test)
+    threads.append(test_receiver)
 
-    storage_status = multiprocessing.Process(target=request_storage_status)
+    """ storage_status = multiprocessing.Process(target=request_storage_status)
     processes.append(storage_status)
-    storage_status.start()
+    storage_status.start() """
 
-    for p in processes:
-        p.join()
+    """ for p in processes:
+        p.join() """
+    
+    for t in threads:
+        t.start()
+
+    for t in threads:
+        t.join()
