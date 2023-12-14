@@ -1,3 +1,4 @@
+import json
 import os
 
 
@@ -133,7 +134,7 @@ def get_object_by_path(file_system: FileSystemObject, file_path):
     # If the file is not found in the current directory, return None
     return None, "file_not_found"
 
-def get_file_id_by_path(file_system: FileSystemObject, file_path):
+""" def get_file_id_by_path(file_system: FileSystemObject, file_path):
     path_dirs = file_path.split('/')
 
     curr_fs_dir = file_system
@@ -158,10 +159,10 @@ def get_file_id_by_path(file_system: FileSystemObject, file_path):
             return item.id
 
     # If the file is not found in the current directory, return None
-    return None
+    return None """
 
 
-def get_object_by_id(file_system: FileSystemObject, target_id):
+""" def get_object_by_id(file_system: FileSystemObject, target_id):
     if file_system.id == target_id:
         return file_system
 
@@ -171,7 +172,7 @@ def get_object_by_id(file_system: FileSystemObject, target_id):
             return result
 
     # If the ID is not found in the current object or its contents
-    return None
+    return None """
 
 
 def add(filesystem: FileSystemObject, path: str, type: str, ip_address=None):
@@ -197,7 +198,12 @@ def add(filesystem: FileSystemObject, path: str, type: str, ip_address=None):
     for i in curr_fs_dir.contents:
         if (i.name == to_add) & (i.type == type):
             print(f"{type} with name {to_add} already exists in this location")
-            return None, "file_already_exists"
+            if type == "file":
+                error = "file_already_exists"
+            else:
+                error = "folder_already_exists"
+            
+            return None, error
 
     file = FileSystemObject(name=to_add, type=type, ip_address=ip_address)
     curr_fs_dir.contents.append(file)

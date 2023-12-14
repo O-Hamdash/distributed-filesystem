@@ -1,6 +1,7 @@
 import time
 import zmq
 from threading import Thread
+import json as js
 
 from shared import generate_json
 
@@ -8,6 +9,7 @@ from fs import *
 
 
 fs_root = FileSystemObject("/", "folder")
+fs_root.editable = False
 
 
 master_ip = "192.168.56.10"
@@ -111,6 +113,10 @@ def master_to_storage_requester(message:dict, reply_socket:zmq.sugar.socket.Sock
 
         print(f"upload reply: {reply}")
 
+        with open(fs_backup_file, "w") as file:
+            serialized_data = fs_root.to_dict()
+            js.dump(serialized_data, file)
+
     elif op == "download":
         print(f"received download request from {message['src_ip']}")
 
@@ -160,7 +166,12 @@ def client_request_handler():
         #master_to_storage_requester = Thread(target=master_to_storage_requester, args=(message,))
         #master_to_storage_requester.start()
 
-        master_to_storage_requester(message, socket)
+        if message['op'] == "mkdir":
+            folder, error = add(fs_root, message['path'], "folder")
+            json = generate_json("mkdir_error", msg=error)
+            socket.send_pyobj(json)
+        else:
+            master_to_storage_requester(message, socket)
 
 if __name__ == "__main__":
     threads = []

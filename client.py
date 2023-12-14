@@ -32,7 +32,7 @@ def upload(local_path, remote_path):
 
         upload_socket.close()
     elif reply['op'] == "upload_error":
-        print(f"error uploading file: {reply['msg']}")
+        print(f"error uploading file '{remote_path}': {reply['msg']}")
         return
     else:
         print("Some error happened on master or storage side.")
@@ -54,7 +54,7 @@ def download(remote_path, local_path):
     reply = client_socket.recv_pyobj()
 
     if reply['op'] == "download_error":
-        print(f"error downlaoding file: {reply['msg']}")
+        print(f"error downlaoding file '{remote_path}': {reply['msg']}")
         client_socket.close()
         download_socket.close()
         return
@@ -71,6 +71,21 @@ def download(remote_path, local_path):
 
     download_socket.close()
 
+def mkdir(path):
+    context = zmq.Context()
+    client_socket = context.socket(zmq.REQ)
+    client_socket.connect(f"tcp://{master_ip}:50002")
+
+    json = generate_json("mkdir", path=path)
+    client_socket.send_pyobj(json)
+
+    reply = client_socket.recv_pyobj()
+
+    if reply['op'] == "mkdir_error":
+        print(f"error creating directory '{path}': {reply['msg']}")
+    
+    client_socket.close()
+
 if __name__ == "__main__":
     upload("test.txt", "/test.txt")
     upload("test1.txt", "/test1.txt")
@@ -78,6 +93,8 @@ if __name__ == "__main__":
     upload("test3.txt", "/test3.txt")
     upload("test4.txt", "/test4.txt")
     upload("test5.txt", "/test5.txt")
+
+    mkdir("/folder1")
 
     print("Test uploaded")
     time.sleep(1)
@@ -88,4 +105,4 @@ if __name__ == "__main__":
     time.sleep(1)
     upload("test.txt", "/folder1/test.txt")
 
-    download("/test4.txt",  "test4-received.txt")
+    download("/folder1/test.txt",  "test_folder1-received.txt")
