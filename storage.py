@@ -167,7 +167,14 @@ def request_handler(port_manager: PortManager):
                 recv_file_thread.start()
                 recv_file_thread.join()
                 reply = generate_json("upload_success", src_ip=get_ip_address(), file_id=file_id)
-        
+        elif _op == "delete_file":
+            file_id = json_message.get("file_id")
+            if os.path.exists(file_id):
+                os.remove(file_id)
+                reply = generate_json("delete_success", src_ip=get_ip_address(), file_id=file_id)
+            else:
+                print("The file does not exist")
+                reply = generate_json("delete_dailed", src_ip=get_ip_address(), file_id=file_id)
         socket.send_pyobj(reply)
 
 if __name__ == "__main__":
