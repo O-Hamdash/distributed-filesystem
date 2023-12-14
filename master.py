@@ -79,7 +79,13 @@ def master_to_storage_requester(message:dict, reply_socket:zmq.sugar.socket.Sock
     if op == "upload":
         dst_ip = get_most_available_storage_ip()
 
-        file = add(fs_root, message["path"], type="file", ip_address=dst_ip)
+        file, error = add(fs_root, message["path"], type="file", ip_address=dst_ip)
+
+        if file == None:
+            json = generate_json("upload_error", msg=error)
+            reply_socket.send_pyobj(json)
+            socket.close()
+            return
 
         file_id = file.id
 

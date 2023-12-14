@@ -31,6 +31,9 @@ def upload(local_path, remote_path):
             upload_socket.send(file_data)
 
         upload_socket.close()
+    elif reply['op'] == "upload_error":
+        print(f"error uploading file: {reply['msg']}")
+        return
     else:
         print("Some error happened on master or storage side.")
 
@@ -70,9 +73,19 @@ def download(remote_path, local_path):
 
 if __name__ == "__main__":
     upload("test.txt", "/test.txt")
+    upload("test1.txt", "/test1.txt")
+    upload("test2.txt", "/test2.txt")
+    upload("test3.txt", "/test3.txt")
+    upload("test4.txt", "/test4.txt")
+    upload("test5.txt", "/test5.txt")
+
     print("Test uploaded")
-    time.sleep(5)
+    time.sleep(1)
     download("/test.txt",  "test-received.txt")
     print("Test downloaded")
-    time.sleep(5)
+    time.sleep(1)
     download("/folder1/test2.txt", "test2.txt")
+    time.sleep(1)
+    upload("test.txt", "/folder1/test.txt")
+
+    download("/test4.txt",  "test4-received.txt")

@@ -192,17 +192,17 @@ def add(filesystem: FileSystemObject, path: str, type: str, ip_address=None):
 
         if (found == False) & (len(path_dirs) > 0):
             print("The path provided does not exist")
-            return
+            return None, "invalid_path"
     
     for i in curr_fs_dir.contents:
         if (i.name == to_add) & (i.type == type):
             print(f"{type} with name {to_add} already exists in this location")
-            return
+            return None, "file_already_exists"
 
     file = FileSystemObject(name=to_add, type=type, ip_address=ip_address)
     curr_fs_dir.contents.append(file)
 
-    return file
+    return file, "success"
         
 def delete(filesystem: FileSystemObject, path: str):
     path_dirs = path.split('/')
