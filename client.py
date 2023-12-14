@@ -87,7 +87,19 @@ def mkdir(path):
     client_socket.close()
 
 def delete(path):
-    pass
+    context = zmq.Context()
+    client_socket = context.socket(zmq.REQ)
+    client_socket.connect(f"tcp://{master_ip}:50002")
+
+    json = generate_json("delete", path=path)
+    client_socket.send_pyobj(json)
+
+    reply = client_socket.recv_pyobj()
+
+    if reply['op'] == "delete_error":
+        print(f"error deleting item '{path}': {reply['msg']}")
+    
+    client_socket.close()
 
 def ls(path="/"):
     pass

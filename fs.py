@@ -209,25 +209,35 @@ def add(filesystem: FileSystemObject, path: str, type: str, ip_address=None):
 def delete(filesystem: FileSystemObject, path: str):
     path_dirs = path.split('/')
 
+    path_dirs.pop(0)
+
     to_del = path_dirs.pop()
 
     curr_fs_dir = filesystem
     for dir in path_dirs:
+        found = False
         for fs_dir in curr_fs_dir.contents:
             if fs_dir.name == dir:
                 curr_fs_dir = fs_dir
+                found = True
                 break
 
-    success = False
+        if (found == False) & (len(path_dirs) > 0):
+            return None, "invalid_path"
+
+
+    # Search for the file in the current directory
     i = -1
     for item in curr_fs_dir.contents:
         i += 1
         if item.name == to_del:
             curr_fs_dir.contents.pop(i)
-            success = True
+            return item, item.type
 
-    if not success:
-        print(f"no such item: {path}")
+    # If the file is not found in the current directory, return None
+    return None, "item_not_found"
+    
+
 
 """ if __name__ == "__main__":
     try:

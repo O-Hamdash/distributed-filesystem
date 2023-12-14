@@ -22,6 +22,8 @@ def backup():
         serialized_data = fs_root.to_dict()
         js.dump(serialized_data, file)
 
+backup()
+
 def listen_for_ips():
     context = zmq.Context()
     master_receiver = context.socket(zmq.PULL)
@@ -118,13 +120,7 @@ def master_to_storage_requester(message:dict, reply_socket:zmq.sugar.socket.Sock
 
         print(f"upload reply: {reply}")
 
-        backup()
-
     elif op == "download":
-        print(f"received download request from {message['src_ip']}")
-
-        print(f"path from message {message['path']}")
-
         file, error = get_object_by_path(fs_root, message["path"])
 
         if file == None:
@@ -132,10 +128,7 @@ def master_to_storage_requester(message:dict, reply_socket:zmq.sugar.socket.Sock
             reply_socket.send_pyobj(json)
             socket.close()
             return
-            
 
-
-        print(file)
 
         file_id = str(file.id)
 
@@ -151,7 +144,35 @@ def master_to_storage_requester(message:dict, reply_socket:zmq.sugar.socket.Sock
         socket.recv_pyobj()
 
         reply_socket.send_pyobj(generate_json("download_success"))
+    elif op == "delete":
+        file, error = delete(fs_root, message["path"])
 
+        if file == None:
+            json = generate_json("delete_error", msg=error)
+            reply_socket.send_pyobj(json)
+            socket.close()
+            return
+        
+        if error == "folder":
+            reply_socket.send_pyobj(generate_json("delete_success"))
+            socket.close()
+            backup()
+            return
+
+        file_id = str(file.id)
+
+        storage_ip = file.ip_address
+
+        socket.connect(f"tcp://{storage_ip}:50001")
+        json = generate_json("delete_file", file_id=file_id)
+        
+        socket.send_pyobj(json)
+
+        socket.recv_pyobj()
+
+        reply_socket.send_pyobj(generate_json("delete_success"))
+
+    backup()
     print(f"exiting {op}")
     socket.close()
     print("closed socket----------")
