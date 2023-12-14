@@ -86,6 +86,12 @@ def mkdir(path):
     
     client_socket.close()
 
+def delete(path):
+    pass
+
+def ls(path="/"):
+    pass
+
 if __name__ == "__main__":
     print("Welcome to the distributed file storage system!")
     while True:
