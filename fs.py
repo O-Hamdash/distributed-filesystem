@@ -106,18 +106,21 @@ def search_local_file(file_system: FileSystemObject, file_name, current_path="",
 def get_object_by_path(file_system: FileSystemObject, file_path):
     path_dirs = file_path.split('/')
 
-    curr_fs_dir = file_system
-    for dir in path_dirs:
-        found = False
-        for fs_dir in curr_fs_dir.contents:
-            if fs_dir.name == dir:
-                curr_fs_dir = fs_dir
-                found = True
-                break
+    print(path_dirs)
 
-        if not found:
-            # If any directory in the path is not found, return None
-            return None
+    curr_fs_dir = file_system
+    if len(path_dirs) > 2:
+        for dir in path_dirs:
+            found = False
+            for fs_dir in curr_fs_dir.contents:
+                if fs_dir.name == dir:
+                    curr_fs_dir = fs_dir
+                    found = True
+                    break
+
+            if not found:
+                # If any directory in the path is not found, return None
+                return None
 
     # The last item in path_dirs is the file name
     file_name = path_dirs[-1]

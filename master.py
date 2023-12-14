@@ -103,8 +103,16 @@ def master_to_storage_requester(message:dict, reply_socket:zmq.sugar.socket.Sock
         ########################################################
         reply = socket.recv_pyobj()
 
+        print(f"upload reply: {reply}")
+
     elif op == "download":
+        print(f"received download request from {message['src_ip']}")
+
+        print(f"path from message {message['path']}")
+
         file = get_object_by_path(fs_root, message["path"])
+
+        print(file)
 
         file_id = str(file.id)
 
@@ -114,15 +122,16 @@ def master_to_storage_requester(message:dict, reply_socket:zmq.sugar.socket.Sock
 
         socket.connect(f"tcp://{storage_ip}:50001")
         json = generate_json("download_details", dst_ip=dst_ip, file_id=file_id)
-
+        
         socket.send_pyobj(json)
 
-        socket.recv_string()
+        socket.recv_pyobj()
 
         reply_socket.send_string("success!")
 
+    print(f"exiting {op}")
     socket.close()
-    exit()
+    print("closed socket----------")
 
 def client_request_handler():
     context = zmq.Context()
