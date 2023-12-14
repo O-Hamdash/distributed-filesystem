@@ -120,7 +120,7 @@ def get_object_by_path(file_system: FileSystemObject, file_path):
 
             if not found:
                 # If any directory in the path is not found, return None
-                return None
+                return None, "invalid_path"
 
     # The last item in path_dirs is the file name
     file_name = path_dirs[-1]
@@ -128,10 +128,10 @@ def get_object_by_path(file_system: FileSystemObject, file_path):
     # Search for the file in the current directory
     for item in curr_fs_dir.contents:
         if item.type == "file" and item.name == file_name:
-            return item
+            return item, "found"
 
     # If the file is not found in the current directory, return None
-    return None
+    return None, "file_not_found"
 
 def get_file_id_by_path(file_system: FileSystemObject, file_path):
     path_dirs = file_path.split('/')

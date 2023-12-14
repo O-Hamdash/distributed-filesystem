@@ -110,7 +110,15 @@ def master_to_storage_requester(message:dict, reply_socket:zmq.sugar.socket.Sock
 
         print(f"path from message {message['path']}")
 
-        file = get_object_by_path(fs_root, message["path"])
+        file, error = get_object_by_path(fs_root, message["path"])
+
+        if file == None:
+            json = generate_json("download_error", msg=error)
+            reply_socket.send_pyobj(json)
+            socket.close()
+            return
+            
+
 
         print(file)
 
@@ -127,7 +135,7 @@ def master_to_storage_requester(message:dict, reply_socket:zmq.sugar.socket.Sock
 
         socket.recv_pyobj()
 
-        reply_socket.send_string("success!")
+        reply_socket.send_pyobj(generate_json("download_success"))
 
     print(f"exiting {op}")
     socket.close()

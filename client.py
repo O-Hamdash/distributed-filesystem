@@ -48,7 +48,14 @@ def download(remote_path, local_path):
     json = generate_json("download", src_ip=local_ip, path=remote_path)
     client_socket.send_pyobj(json)
 
-    reply = client_socket.recv_string()
+    reply = client_socket.recv_pyobj()
+
+    if reply['op'] == "download_error":
+        print(f"error downlaoding file: {reply['msg']}")
+        client_socket.close()
+        download_socket.close()
+        return
+
     client_socket.close()
 
     print("Storage node is contacted for downloading.")
@@ -68,5 +75,4 @@ if __name__ == "__main__":
     download("/test.txt",  "test-received.txt")
     print("Test downloaded")
     time.sleep(5)
-    download("/test2.txt", "test2.txt")
-    print("Error")
+    download("/folder1/test2.txt", "test2.txt")
