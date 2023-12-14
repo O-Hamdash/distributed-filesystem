@@ -107,28 +107,26 @@ def search_local_file(file_system: FileSystemObject, file_name, current_path="",
 def get_object_by_path(file_system: FileSystemObject, file_path):
     path_dirs = file_path.split('/')
 
-    print(path_dirs)
+    path_dirs.pop(0)
+
+    to_get = path_dirs.pop()
 
     curr_fs_dir = file_system
-    if len(path_dirs) > 2:
-        for dir in path_dirs:
-            found = False
-            for fs_dir in curr_fs_dir.contents:
-                if fs_dir.name == dir:
-                    curr_fs_dir = fs_dir
-                    found = True
-                    break
+    for dir in path_dirs:
+        found = False
+        for fs_dir in curr_fs_dir.contents:
+            if fs_dir.name == dir:
+                curr_fs_dir = fs_dir
+                found = True
+                break
 
-            if not found:
-                # If any directory in the path is not found, return None
-                return None, "invalid_path"
+        if (found == False) & (len(path_dirs) > 0):
+            return None, "invalid_path"
 
-    # The last item in path_dirs is the file name
-    file_name = path_dirs[-1]
 
     # Search for the file in the current directory
     for item in curr_fs_dir.contents:
-        if item.type == "file" and item.name == file_name:
+        if item.type == "file" and item.name == to_get:
             return item, "found"
 
     # If the file is not found in the current directory, return None
@@ -192,12 +190,10 @@ def add(filesystem: FileSystemObject, path: str, type: str, ip_address=None):
                 break
 
         if (found == False) & (len(path_dirs) > 0):
-            print("The path provided does not exist")
             return None, "invalid_path"
     
     for i in curr_fs_dir.contents:
         if (i.name == to_add) & (i.type == type):
-            print(f"{type} with name {to_add} already exists in this location")
             if type == "file":
                 error = "file_already_exists"
             else:
