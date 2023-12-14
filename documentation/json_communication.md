@@ -38,7 +38,17 @@ This will be the reply to the master sent by the storage node. The json generato
 This will be used by the master to send the upload details to the client. Json generator: `generate_json("upload_details",dst_ip=chosen_storage_ip , port=port_generated_by_storage)`
 ### 8. Upload_success
 This will be used by the storage to notify the master that it received the file. Json generator: `generate_json("upload_success",src_ip=get_ip_address(), file_id=chosen_file_id_by_master)`
-### 9. Download_details
+### 9. Upload_error
+This will be sent from the master to the client in case of an invalid path or if the file already exists. The json will be: `generate_json("upload_error", msg=error_type)`. error_type can take values ("invalid_path", "file_already_exists")
+### 10. Download_details
 This will be sent from the master to the storage node when the client wants to download a file. The json generator: `generate_json("download_details", dst_ip=ip_of_client_requesting_download, file_id=id_of_file_to_download)`
-### 10. Download_error
-This will be sent from the master to the client in case of an incorrect filename. The json will be: `generate_json("download_error")`
+### 11. Download_error
+This will be sent from the master to the client in case of an incorrect filename or path. The json will be: `generate_json("download_error", msg=error_type)`. error_type can take values ("invalid_path", "file_not_found")
+### 12. Delete
+This will be sent from the client to the master to indicate that it wants to delete a file. `generate_json("delete", path=remote_path_of_file_to_be_deleted)`
+### 13. Delete_file
+This is sent from master to storage to signal that a specific file should be deleted. `generate_json("delete_file", file_id=file_id)`
+### 14. Delete_success
+This is sent from the master to the client signaling that a file was successfully deleted. `generate_json("delete_success")`
+### 15. Delete_error
+This is sent from the client to the master signaling that an error occcred while trying to delete the file. `generate_json("delete_error", msgg=error_type)`
