@@ -17,6 +17,11 @@ download_port = "50003"
 
 storage_ips = set()
 
+def backup():
+    with open(fs_backup_file, "w") as file:
+        serialized_data = fs_root.to_dict()
+        js.dump(serialized_data, file)
+
 def listen_for_ips():
     context = zmq.Context()
     master_receiver = context.socket(zmq.PULL)
@@ -113,9 +118,7 @@ def master_to_storage_requester(message:dict, reply_socket:zmq.sugar.socket.Sock
 
         print(f"upload reply: {reply}")
 
-        with open(fs_backup_file, "w") as file:
-            serialized_data = fs_root.to_dict()
-            js.dump(serialized_data, file)
+        backup()
 
     elif op == "download":
         print(f"received download request from {message['src_ip']}")
@@ -168,7 +171,11 @@ def client_request_handler():
 
         if message['op'] == "mkdir":
             folder, error = add(fs_root, message['path'], "folder")
-            json = generate_json("mkdir_error", msg=error)
+            if error != "success":
+                json = generate_json("mkdir_error", msg=error)
+            else:
+                json = generate_json("success")
+                backup()
             socket.send_pyobj(json)
         else:
             master_to_storage_requester(message, socket)

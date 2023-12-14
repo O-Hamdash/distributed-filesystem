@@ -61,7 +61,7 @@ def download(remote_path, local_path):
 
     client_socket.close()
 
-    print("Storage node is contacted for downloading.")
+    # print("Storage node is contacted for downloading.")
         
     file_data = download_socket.recv()
 
@@ -93,11 +93,13 @@ def ls(path="/"):
     pass
 
 if __name__ == "__main__":
-    print("Welcome to the distributed file storage system!")
+    print("\nWelcome to the distributed file storage system!\nFor a list of the commands supported, type help\n")
     while True:
-        command = input("Enter your command: (Enter help to get the list of available commands)\n")
+        command = input("dfs> ").strip()
         args = command.split()
-        if command == "help":
+        if command == "":
+            continue
+        elif command == "help":
             print("Command Name => how to invoke the command")
             print("1. upload => upload <local_path> <remote_path> (remote_path must start with a \"/\" character)")
             print("2. download => download <remote_path> <local_path> (remote_path must start with a \"/\" character)")
@@ -138,7 +140,7 @@ if __name__ == "__main__":
                 print("Wrong number of arguments. ls command is called as the following:")
                 print("ls <path> (<path> is optional)")
         elif command == "exit":
-            print("Exiting from the program. Good bye!")
+            print("\nExiting the program. Good bye!\n")
             break
         else:
             print("Error: Invalid command.")
