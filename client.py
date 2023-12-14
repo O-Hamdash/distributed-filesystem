@@ -87,22 +87,52 @@ def mkdir(path):
     client_socket.close()
 
 if __name__ == "__main__":
-    upload("test.txt", "/test.txt")
-    upload("test1.txt", "/test1.txt")
-    upload("test2.txt", "/test2.txt")
-    upload("test3.txt", "/test3.txt")
-    upload("test4.txt", "/test4.txt")
-    upload("test5.txt", "/test5.txt")
-
-    mkdir("/folder1")
-
-    print("Test uploaded")
-    time.sleep(1)
-    download("/test.txt",  "test-received.txt")
-    print("Test downloaded")
-    time.sleep(1)
-    download("/folder1/test2.txt", "test2.txt")
-    time.sleep(1)
-    upload("test.txt", "/folder1/test.txt")
-
-    download("/folder1/test.txt",  "test_folder1-received.txt")
+    print("Welcome to the distributed file storage system!")
+    while True:
+        command = input("Enter your command: (Enter help to get the list of available commands)\n")
+        args = command.split()
+        if command == "help":
+            print("Command Name => how to invoke the command")
+            print("1. upload => upload <local_path> <remote_path> (remote_path must start with a \"/\" character)")
+            print("2. download => download <remote_path> <local_path> (remote_path must start with a \"/\" character)")
+            print("3. delete => delete <path> (path must start with a \"/\" character)")
+            print("4. mkdir => mkdir <path (path must start with a \"/\" character)")
+            print("5. ls => ls <path> (<path> is an optional input field. When it is given, it must start with a \"/\" character)")
+            print("6. exit => exit")
+        elif args[0] == "upload":
+            if len(args) == 3:
+                upload(args[1], args[2])
+            else:
+                print("Wrong number of arguments. upload command is called as the following:")
+                print("upload <local_path> <remote_path>")
+        elif args[0] == "download":
+            if len(args) == 3:
+                download(args[1], args[2])
+            else:
+                print("Wrong number of arguments. download command is called as the following:")
+                print("download <remote_path> <local_path>")
+        elif args[0] == "delete":
+            if len(args) == 2:
+                delete(args[1])
+            else:
+                print("Wrong number of arguments. delete command is called as the following:")
+                print("delete <path>")
+        elif args[0] == "mkdir":
+            if len(args) == 2:
+                mkdir(args[1])
+            else:
+                print("Wrong number of arguments. mkdir command is called as the following:")
+                print("mkdir <path>")
+        elif args[0] == "ls":
+            if len(args) == 1:
+                ls()
+            elif len(args) == 2:
+                ls(args[1])
+            else:
+                print("Wrong number of arguments. ls command is called as the following:")
+                print("ls <path> (<path> is optional)")
+        elif command == "exit":
+            print("Exiting from the program. Good bye!")
+            break
+        else:
+            print("Error: Invalid command.")
