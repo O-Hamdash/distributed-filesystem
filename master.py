@@ -59,6 +59,7 @@ def get_most_available_storage_ip():
         print(f"received available storage from {reply['src_ip']}: {reply['msg']}")
 
         if available_storage > largest_storage:
+            largest_storage = available_storage
             chosen_node_ip = storage_ip
 
     return chosen_node_ip
@@ -171,6 +172,24 @@ def master_to_storage_requester(message:dict, reply_socket:zmq.sugar.socket.Sock
         socket.recv_pyobj()
 
         reply_socket.send_pyobj(generate_json("delete_success"))
+    elif op == "ls":
+        items, error = ls(fs_root, message['path'])
+        
+        if items == None:
+            json = generate_json("ls_error", msg=error)
+            reply_socket.send_pyobj(json)
+            socket.close()
+            return
+        
+        items_str = ""
+        for item in items:
+            items_str += item + ","
+        
+        items_str = items_str[:len(items_str)-1]
+
+        json = generate_json("ls_reply", msg=items_str)
+
+        reply_socket.send_pyobj(json)
 
     backup()
     print(f"exiting {op}")

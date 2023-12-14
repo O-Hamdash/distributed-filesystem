@@ -237,6 +237,34 @@ def delete(filesystem: FileSystemObject, path: str):
     # If the file is not found in the current directory, return None
     return None, "item_not_found"
     
+def ls(filesystem: FileSystemObject, path:str='/'):
+    result = []
+    
+    path_dirs = path.split('/')
+
+    path_dirs.pop(0)
+
+    curr_fs_dir = filesystem
+    if path != "/":
+        for dir in path_dirs:
+            found = False
+            for fs_dir in curr_fs_dir.contents:
+                if fs_dir.name == dir:
+                    curr_fs_dir = fs_dir
+                    found = True
+                    break
+
+            if (found == False) & (len(path_dirs) > 0):
+                return None, "invalid_path"
+    
+    print("\n\n\n\n")
+    print(curr_fs_dir)
+    print("\n\n\n\n")
+
+    for item in curr_fs_dir.contents:
+        result.append(item.name)
+
+    return result, "success"
 
 
 """ if __name__ == "__main__":
